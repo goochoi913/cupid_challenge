@@ -22,84 +22,185 @@ class ValentineHome extends StatefulWidget {
   State<ValentineHome> createState() => _ValentineHomeState();
 }
 
-class _ValentineHomeState extends State<ValentineHome> {
+// CHANGED: Use TickerProviderStateMixin (not Single) to handle TWO animations
+class _ValentineHomeState extends State<ValentineHome> with TickerProviderStateMixin {
   final List<String> emojiOptions = ['Sweet Heart', 'Party Heart'];
   String selectedEmoji = 'Sweet Heart';
+  
+  // Pulse Animation Variables
+  late AnimationController _controller;
+  bool isPulsing = false;
+
+  // Balloon Animation Variables
+  late AnimationController _balloonController;
+  late Animation<Offset> _balloonAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // 1. Setup Pulse Animation
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+      lowerBound: 0.9,
+      upperBound: 1.1,
+    );
+
+    // 2. Setup Balloon Animation (Falls from top to bottom)
+    _balloonController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    );
+
+    _balloonAnimation = Tween<Offset>(
+      begin: const Offset(0, -1.5), // Start above screen
+      end: const Offset(0, 1.5),   // End below screen
+    ).animate(CurvedAnimation(parent: _balloonController, curve: Curves.easeIn));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _balloonController.dispose(); // Don't forget to dispose balloons!
+    super.dispose();
+  }
+
+  void togglePulse() {
+    setState(() {
+      isPulsing = !isPulsing;
+      if (isPulsing) {
+        _controller.repeat(reverse: true);
+      } else {
+        _controller.stop();
+        _controller.reset();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Cupid\'s Canvas'),
-        // OPTIONAL: Add a small Cupid icon to the AppBar
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
           child: CircleAvatar(
-            backgroundImage: AssetImage('assets/images/cupid.jpg'), // Uses your cupid image
+            backgroundImage: AssetImage('assets/images/cupid.jpg'),
           ),
         ),
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            colors: [Color(0xFFF8BBD0), Color(0xFFE91E63)],
-            center: Alignment.center,
-            radius: 0.8,
-          ),
-        ),
-        child: Column(
-          children: [
-            const SizedBox(height: 16),
-            
-            // --- DROPDOWN ---
-            DropdownButton<String>(
-              value: selectedEmoji,
-              dropdownColor: Colors.white,
-              items: emojiOptions
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                  .toList(),
-              onChanged: (value) => setState(() => selectedEmoji = value ?? selectedEmoji),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // --- MAIN HEART PAINTER ---
-            Expanded(
-              child: Center(
-                child: CustomPaint(
-                  size: const Size(300, 300),
-                  painter: HeartEmojiPainter(type: selectedEmoji),
-                ),
+      // STACK allows us to layer Balloons ON TOP of everything else
+      body: Stack(
+        children: [
+          // LAYER 1: The Main App Content (Gradient, Heart, Buttons)
+          Container(
+            decoration: const BoxDecoration(
+              gradient: RadialGradient(
+                colors: [Color(0xFFF8BBD0), Color(0xFFE91E63)],
+                center: Alignment.center,
+                radius: 0.8,
               ),
             ),
-
-            // --- DECORATIVE GLITTER IMAGE (Bottom) ---
-            // This satisfies the requirement to use the asset folder
-            Container(
-              height: 80,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/images/heart_glitter.jpg'), // Uses your glitter image
-                  fit: BoxFit.cover,
-                  colorFilter: ColorFilter.mode(
-                      Colors.white.withOpacity(0.5), BlendMode.dstATop), // Fades it slightly
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
+                
+                DropdownButton<String>(
+                  value: selectedEmoji,
+                  dropdownColor: Colors.white,
+                  items: emojiOptions
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
+                  onChanged: (value) => setState(() => selectedEmoji = value ?? selectedEmoji),
                 ),
-              ),
-              child: const Center(
-                child: Text(
-                  "Happy Valentine's Day!",
-                  style: TextStyle(
-                    fontSize: 20, 
-                    fontWeight: FontWeight.bold, 
-                    color: Colors.white,
-                    shadows: [Shadow(blurRadius: 10, color: Colors.black)],
+                
+                const SizedBox(height: 16),
+                
+                Expanded(
+                  child: Center(
+                    child: ScaleTransition(
+                      scale: _controller,
+                      child: CustomPaint(
+                        size: const Size(300, 300),
+                        painter: HeartEmojiPainter(type: selectedEmoji),
+                      ),
+                    ),
                   ),
                 ),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: togglePulse,
+                      icon: Icon(isPulsing ? Icons.favorite : Icons.favorite_border),
+                      label: Text(isPulsing ? "Stop Pulse" : "Pulse Heart"),
+                    ),
+                    
+                    const SizedBox(width: 20),
+
+                    // CELEBRATE BUTTON: Triggers the balloons
+                    ElevatedButton.icon(
+                      onPressed: () {
+                         _balloonController.reset(); // Move back to top
+                         _balloonController.forward(); // Drop them!
+                      },
+                      icon: const Icon(Icons.celebration),
+                      label: const Text("Celebrate!"),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 16), 
+
+                Container(
+                  height: 80,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage('assets/images/heart_glitter.jpg'),
+                      fit: BoxFit.cover,
+                      colorFilter: ColorFilter.mode(
+                          Colors.white.withOpacity(0.5), BlendMode.dstATop),
+                    ),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      "Happy Valentine's Day!",
+                      style: TextStyle(
+                        fontSize: 20, 
+                        fontWeight: FontWeight.bold, 
+                        color: Colors.white,
+                        shadows: [Shadow(blurRadius: 10, color: Colors.black)],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // LAYER 2: The Falling Balloons (Invisible until button clicked)
+          SlideTransition(
+            position: _balloonAnimation,
+            child: IgnorePointer(
+              child: Container(
+                padding: const EdgeInsets.only(top: 50),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: const [
+                    Icon(Icons.circle, color: Colors.red, size: 40),
+                    Icon(Icons.circle, color: Colors.blue, size: 50),
+                    Icon(Icons.star, color: Colors.yellow, size: 60),
+                    Icon(Icons.circle, color: Colors.purple, size: 40),
+                    Icon(Icons.favorite, color: Colors.pink, size: 50),
+                  ],
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -121,15 +222,15 @@ class HeartEmojiPainter extends CustomPainter {
       ..cubicTo(center.dx - 60, center.dy - 120, center.dx - 110, center.dy - 10, center.dx, center.dy + 60)
       ..close();
 
-    // LOVE TRAIL (Glowing Aura) ---
+    // LOVE TRAIL
     final trailPaint = Paint()
       ..color = Colors.white.withOpacity(0.3)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 15 // Thick stroke for aura
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10); // Blur for glow effect
+      ..strokeWidth = 15
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
     canvas.drawPath(heartPath, trailPaint);
 
-    // HEART GRADIENT ---
+    // HEART GRADIENT
     final Rect heartBounds = heartPath.getBounds();
     final Gradient heartGradient = LinearGradient(
       begin: Alignment.topLeft,
@@ -163,11 +264,11 @@ class HeartEmojiPainter extends CustomPainter {
       canvas.drawPath(hatPath, hatPaint);
     }
 
-    // FESTIVE DETAILS & SPARKLES
+    // FESTIVE DETAILS
     if (type == 'Party Heart') {
       final confettiPaint = Paint()..style = PaintingStyle.fill;
       
-      // CONFETTI CIRCLES
+      // Circles
       final List<Offset> circles = [
         Offset(center.dx - 70, center.dy - 60),
         Offset(center.dx + 50, center.dy - 100),
@@ -178,7 +279,7 @@ class HeartEmojiPainter extends CustomPainter {
         canvas.drawCircle(pos, 6, confettiPaint);
       }
 
-      // CONFETTI TRIANGLES
+      // Triangles
       final triPaint = Paint()..color = Colors.amberAccent..style = PaintingStyle.fill;
       final List<Offset> triangles = [
         Offset(center.dx + 70, center.dy - 60),
@@ -194,18 +295,17 @@ class HeartEmojiPainter extends CustomPainter {
         canvas.drawPath(triPath, triPaint);
       }
 
-      // ANIMATED SPARKLES (Star Bursts / Short Lines)
+      // Sparkles
       final linePaint = Paint()
         ..color = Colors.white
         ..strokeWidth = 2
         ..style = PaintingStyle.stroke;
       
-      // Draw a little burst near the hat
       double burstX = center.dx;
       double burstY = center.dy - 120;
-      canvas.drawLine(Offset(burstX, burstY - 10), Offset(burstX, burstY - 20), linePaint); // Up
-      canvas.drawLine(Offset(burstX - 10, burstY), Offset(burstX - 20, burstY), linePaint); // Left
-      canvas.drawLine(Offset(burstX + 10, burstY), Offset(burstX + 20, burstY), linePaint); // Right
+      canvas.drawLine(Offset(burstX, burstY - 10), Offset(burstX, burstY - 20), linePaint);
+      canvas.drawLine(Offset(burstX - 10, burstY), Offset(burstX - 20, burstY), linePaint);
+      canvas.drawLine(Offset(burstX + 10, burstY), Offset(burstX + 20, burstY), linePaint);
     }
   }
 
