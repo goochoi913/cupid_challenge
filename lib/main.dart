@@ -30,26 +30,39 @@ class _ValentineHomeState extends State<ValentineHome> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Cupid\'s Canvas')),
-      body: Column(
-        children: [
-          const SizedBox(height: 16),
-          DropdownButton<String>(
-            value: selectedEmoji,
-            items: emojiOptions
-                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                .toList(),
-            onChanged: (value) => setState(() => selectedEmoji = value ?? selectedEmoji),
+      // 1. We wrap the body in a Container to hold the gradient
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            // Soft pink in the middle, deep red on the outside
+            colors: [Color(0xFFF8BBD0), Color(0xFFE91E63)],
+            center: Alignment.center,
+            radius: 0.8,
           ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: Center(
-              child: CustomPaint(
-                size: const Size(300, 300),
-                painter: HeartEmojiPainter(type: selectedEmoji),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 16),
+            DropdownButton<String>(
+              value: selectedEmoji,
+              // White background to dropdown so it's readable
+              dropdownColor: Colors.white, 
+              items: emojiOptions
+                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .toLqist(),
+              onChanged: (value) => setState(() => selectedEmoji = value ?? selectedEmoji),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: Center(
+                child: CustomPaint(
+                  size: const Size(300, 300),
+                  painter: HeartEmojiPainter(type: selectedEmoji),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -71,7 +84,18 @@ class HeartEmojiPainter extends CustomPainter {
       ..cubicTo(center.dx - 60, center.dy - 120, center.dx - 110, center.dy - 10, center.dx, center.dy + 60)
       ..close();
 
-    paint.color = type == 'Party Heart' ? const Color(0xFFF48FB1) : const Color(0xFFE91E63);
+    // Gradient Shader
+    final Rect heartBounds = heartPath.getBounds();
+    final Gradient heartGradient = LinearGradient(
+      colors: type == 'Party Heart' 
+          ? [const Color(0xFFF48FB1), const Color(0xFFFFCC80)] // Pink to Orange
+          : [const Color(0xFFE91E63), const Color(0xFF880E4F)], // Red to Dark Red
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
+    
+    // Apply the gradient to the paint
+    paint.shader = heartGradient.createShader(heartBounds);
     canvas.drawPath(heartPath, paint);
 
     // Face features (starter)
