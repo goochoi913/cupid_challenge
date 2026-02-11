@@ -29,13 +29,20 @@ class _ValentineHomeState extends State<ValentineHome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Cupid\'s Canvas')),
-      // Replace the body: Column(...) with this:
+      appBar: AppBar(
+        title: const Text('Cupid\'s Canvas'),
+        // OPTIONAL: Add a small Cupid icon to the AppBar
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: CircleAvatar(
+            backgroundImage: AssetImage('assets/images/cupid.jpg'), // Uses your cupid image
+          ),
+        ),
+      ),
       body: Container(
-        // PART 2: Soft pink-to-red radial gradient
         decoration: const BoxDecoration(
           gradient: RadialGradient(
-            colors: [Color(0xFFF8BBD0), Color(0xFFE91E63)], // Pink to Red
+            colors: [Color(0xFFF8BBD0), Color(0xFFE91E63)],
             center: Alignment.center,
             radius: 0.8,
           ),
@@ -43,21 +50,51 @@ class _ValentineHomeState extends State<ValentineHome> {
         child: Column(
           children: [
             const SizedBox(height: 16),
-            // We add a background to the dropdown so it's readable
+            
+            // --- DROPDOWN ---
             DropdownButton<String>(
               value: selectedEmoji,
-              dropdownColor: Colors.white, 
+              dropdownColor: Colors.white,
               items: emojiOptions
                   .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                   .toList(),
               onChanged: (value) => setState(() => selectedEmoji = value ?? selectedEmoji),
             ),
+            
             const SizedBox(height: 16),
+            
+            // --- MAIN HEART PAINTER ---
             Expanded(
               child: Center(
                 child: CustomPaint(
                   size: const Size(300, 300),
                   painter: HeartEmojiPainter(type: selectedEmoji),
+                ),
+              ),
+            ),
+
+            // --- DECORATIVE GLITTER IMAGE (Bottom) ---
+            // This satisfies the requirement to use the asset folder
+            Container(
+              height: 80,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/images/heart_glitter.jpg'), // Uses your glitter image
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                      Colors.white.withOpacity(0.5), BlendMode.dstATop), // Fades it slightly
+                ),
+              ),
+              child: const Center(
+                child: Text(
+                  "Happy Valentine's Day!",
+                  style: TextStyle(
+                    fontSize: 20, 
+                    fontWeight: FontWeight.bold, 
+                    color: Colors.white,
+                    shadows: [Shadow(blurRadius: 10, color: Colors.black)],
+                  ),
                 ),
               ),
             ),
